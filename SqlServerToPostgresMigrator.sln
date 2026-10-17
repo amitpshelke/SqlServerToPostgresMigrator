@@ -1,0 +1,61 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36804.6
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MigrationTool.Cli", "MigrationTool.Cli\MigrationTool.Cli.csproj", "{CD955DED-06BC-4C37-BFEE-84E325B0C0FD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MigrationTool.Core", "MigrationTool.Core\MigrationTool.Core.csproj", "{06F6E8A4-40EE-4F8D-9E2E-AEF6CE308641}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MigrationTool.SqlServer", "MigrationTool.SqlServer\MigrationTool.SqlServer.csproj", "{05BB01CB-67C3-4660-87EA-5331A473017C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MigrationTool.PostgreSql", "MigrationTool.PostgreSql\MigrationTool.PostgreSql.csproj", "{964E92AE-0F49-457F-B2AA-AC2CF268A7EB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MigrationTool.Mapping", "MigrationTool.Mapping\MigrationTool.Mapping.csproj", "{1B8C1D63-2C46-41B0-BB8D-27AADC9C758B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MigrationTool.Reporting", "MigrationTool.Reporting\MigrationTool.Reporting.csproj", "{F22306B7-A678-4F93-B857-742ADAFA6B42}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MigrationTool.Mapping.Tests", "MigrationTool.Mapping.Tests\MigrationTool.Mapping.Tests.csproj", "{5D8D2707-9E81-44C1-9DA6-1B9796D83698}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CD955DED-06BC-4C37-BFEE-84E325B0C0FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD955DED-06BC-4C37-BFEE-84E325B0C0FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD955DED-06BC-4C37-BFEE-84E325B0C0FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD955DED-06BC-4C37-BFEE-84E325B0C0FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06F6E8A4-40EE-4F8D-9E2E-AEF6CE308641}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06F6E8A4-40EE-4F8D-9E2E-AEF6CE308641}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06F6E8A4-40EE-4F8D-9E2E-AEF6CE308641}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06F6E8A4-40EE-4F8D-9E2E-AEF6CE308641}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05BB01CB-67C3-4660-87EA-5331A473017C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05BB01CB-67C3-4660-87EA-5331A473017C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05BB01CB-67C3-4660-87EA-5331A473017C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05BB01CB-67C3-4660-87EA-5331A473017C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{964E92AE-0F49-457F-B2AA-AC2CF268A7EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{964E92AE-0F49-457F-B2AA-AC2CF268A7EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{964E92AE-0F49-457F-B2AA-AC2CF268A7EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{964E92AE-0F49-457F-B2AA-AC2CF268A7EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B8C1D63-2C46-41B0-BB8D-27AADC9C758B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B8C1D63-2C46-41B0-BB8D-27AADC9C758B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B8C1D63-2C46-41B0-BB8D-27AADC9C758B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B8C1D63-2C46-41B0-BB8D-27AADC9C758B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F22306B7-A678-4F93-B857-742ADAFA6B42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F22306B7-A678-4F93-B857-742ADAFA6B42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F22306B7-A678-4F93-B857-742ADAFA6B42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F22306B7-A678-4F93-B857-742ADAFA6B42}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D8D2707-9E81-44C1-9DA6-1B9796D83698}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D8D2707-9E81-44C1-9DA6-1B9796D83698}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D8D2707-9E81-44C1-9DA6-1B9796D83698}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D8D2707-9E81-44C1-9DA6-1B9796D83698}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {94DD1F48-7C27-43AC-8E02-17BF1E308FD6}
+	EndGlobalSection
+EndGlobal

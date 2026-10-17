@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "MigrationTool.Cli": {
+      "commandName": "Project",
+      "commandLineArgs": "validate --schema",
+      "workingDirectory": "C:\\SqlServerToPostgresMigrator\\MigrationTool.Cli\\bin\\Debug\\net8.0"
+    }
+  }
+}

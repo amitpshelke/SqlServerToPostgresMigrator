@@ -5,14 +5,14 @@ namespace MigrationTool.Core.Interfaces;
 public interface IDataMigrationService
 {
     IReadOnlyList<TableDefinition> GetMigrationOrder(
-       IReadOnlyList<TableDefinition> tables);
+        IReadOnlyList<TableDefinition> tables);
 
-    Task<long> MigrateTableAsync(
+    Task<MigrationTableResult> MigrateTableAsync(
         TableDefinition table,
         IProgress<MigrationProgress>? progress = null,
         CancellationToken cancellationToken = default);
 
-    Task MigrateAllTablesAsync(
+    Task<MigrationReport> MigrateAllTablesAsync(
         IReadOnlyList<TableDefinition> tables,
         IProgress<MigrationProgress>? progress = null,
         CancellationToken cancellationToken = default);

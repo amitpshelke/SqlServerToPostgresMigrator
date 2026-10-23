@@ -33,7 +33,7 @@ services.AddLogging(builder =>
         options.TimestampFormat = "HH:mm:ss ";
     });
 
-    builder.SetMinimumLevel(LogLevel.Information);
+    builder.SetMinimumLevel(LogLevel.Warning);
 });
 
 services.AddSingleton(options);
@@ -53,6 +53,7 @@ services.AddSingleton<IDataWriter>(serviceProvider =>
         options.Target.ConnectionString,
         converter);
 });
+services.AddSingleton<IMigrationLogger, MigrationLogger>();
 services.AddSingleton<IDataMigrationService, DataMigrationService>();
 services.AddSingleton<IDataValueConverter, SqlServerValueConverter>();
 services.AddSingleton<IIdentitySynchronizer>(
@@ -109,7 +110,15 @@ static async Task ExecuteCommandAsync(string[] args, IMigrationService migration
 
         case "generate-schema":
             var outputDirectory = GetOption(args, "--output") ?? "generated-schema";
-            await migrationService.GenerateSchemaAsync(outputDirectory, cancellationTokenSource.Token);
+            var schemaFileCount = await migrationService.GenerateSchemaAsync(outputDirectory, cancellationTokenSource.Token);
+
+            Console.WriteLine();
+            Console.WriteLine("Schema generation");
+            Console.WriteLine("==============================");
+            Console.WriteLine($"Output directory : {Path.GetFullPath(outputDirectory)}");
+            Console.WriteLine($"Schema files      : {schemaFileCount}");
+            Console.WriteLine();
+            Console.WriteLine("Schema generation completed.");
             break;
 
         case "create-postgresql-schema":
@@ -152,7 +161,7 @@ static async Task ListTablesAsync(IMigrationService migrationService, Cancellati
 
     foreach (var table in tables)
     {
-        Console.WriteLine($"{table.SchemaName}.{table.TableName}");
+        Console.WriteLine(table.FullName);
     }
 
     Console.WriteLine();
@@ -224,13 +233,25 @@ static async Task MigrateSingleTableAsync(string[] args, IMigrationService migra
             }
         });
 
-    var rowCount =
-    await dataMigrationService.MigrateTableAsync(table, progress, cancellationToken);
+    var result = await dataMigrationService.MigrateTableAsync(table, progress, cancellationToken);
 
-    Console.WriteLine();
-    Console.WriteLine($"Migration completed: {table.FullName}");
-    Console.WriteLine($"Rows migrated: {rowCount}");
-    Console.WriteLine();
+    if (result.Status == MigrationTableStatus.Success)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"Migration completed: {result.TableName}");
+        Console.WriteLine($"Rows migrated: {result.RowsMigrated}");
+    }
+    else
+    {
+        Console.WriteLine();
+        Console.WriteLine($"Migration failed: {result.TableName}");
+        Console.WriteLine($"Rows migrated: {result.RowsMigrated}");
+        if (!string.IsNullOrWhiteSpace(result.ErrorCode))
+        {
+            Console.WriteLine($"Error Code: {result.ErrorCode}");
+        }
+        Console.WriteLine($"Error: {result.ErrorMessage}");
+    }
 }
 
 static async Task MigrateDataAsync(string[] args, IMigrationService migrationService, IDataMigrationService dataMigrationService, CancellationToken cancellationToken)
@@ -309,9 +330,8 @@ static async Task MigrateAllTablesAsync(IMigrationService migrationService, IDat
                                                         }
                                                     });
 
-    await dataMigrationService.MigrateAllTablesAsync(tables, progress, cancellationToken);
-    Console.WriteLine();
-    Console.WriteLine("All table migrations completed.");
+    var report = await dataMigrationService.MigrateAllTablesAsync(tables, progress, cancellationToken);
+    Console.WriteLine(MigrationReportFormatter.Format(report));
 }
 
 static async Task ValidateAsync(string[] args, IMigrationService migrationService, IDataValidator dataValidator, CancellationToken cancellationToken)

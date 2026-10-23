@@ -193,6 +193,81 @@ public sealed class PostgreSqlSchemaWriter : ISchemaWriter
         return "\"" + identifier.Replace("\"", "\"\"") + "\"";
     }
 
+    private static async Task<bool> ConstraintExistsAsync(
+    NpgsqlConnection connection,
+    NpgsqlTransaction transaction,
+    string schemaName,
+    string tableName,
+    string constraintName,
+    CancellationToken cancellationToken)
+    {
+        const string sql = """
+        SELECT EXISTS
+        (
+            SELECT 1
+            FROM pg_constraint c
+            INNER JOIN pg_class t
+                ON t.oid = c.conrelid
+            INNER JOIN pg_namespace n
+                ON n.oid = t.relnamespace
+            WHERE n.nspname = @schemaName
+              AND t.relname = @tableName
+              AND c.conname = @constraintName
+        );
+        """;
+
+        await using var command =
+            new NpgsqlCommand(sql, connection, transaction);
+
+        command.Parameters.AddWithValue(
+            "schemaName",
+            schemaName);
+
+        command.Parameters.AddWithValue(
+            "tableName",
+            tableName);
+
+        command.Parameters.AddWithValue(
+            "constraintName",
+            constraintName);
+
+        return (bool)(await command.ExecuteScalarAsync(cancellationToken))!;
+    }
+
+    private static async Task<bool> IndexExistsAsync(
+    NpgsqlConnection connection,
+    NpgsqlTransaction transaction,
+    string schemaName,
+    string indexName,
+    CancellationToken cancellationToken)
+    {
+        const string sql = """
+        SELECT EXISTS
+        (
+            SELECT 1
+            FROM pg_class i
+            INNER JOIN pg_namespace n
+                ON n.oid = i.relnamespace
+            WHERE i.relkind = 'i'
+              AND n.nspname = @schemaName
+              AND i.relname = @indexName
+        );
+        """;
+
+        await using var command =
+            new NpgsqlCommand(sql, connection, transaction);
+
+        command.Parameters.AddWithValue(
+            "schemaName",
+            schemaName);
+
+        command.Parameters.AddWithValue(
+            "indexName",
+            indexName);
+
+        return (bool)(await command.ExecuteScalarAsync(cancellationToken))!;
+    }
+
     private static async Task CreatePrimaryKeysAsync(
     NpgsqlConnection connection,
     NpgsqlTransaction transaction,
@@ -205,6 +280,18 @@ public sealed class PostgreSqlSchemaWriter : ISchemaWriter
 
             if (table.PrimaryKey is null ||
                 table.PrimaryKey.Columns.Count == 0)
+            {
+                continue;
+            }
+
+            var exists = await ConstraintExistsAsync(connection,
+                                                    transaction,
+                                                    table.SchemaName,
+                                                    table.TableName,
+                                                    table.PrimaryKey.Name,
+                                                    cancellationToken);
+
+            if (exists)
             {
                 continue;
             }
@@ -243,6 +330,18 @@ public sealed class PostgreSqlSchemaWriter : ISchemaWriter
             foreach (var constraint in table.UniqueConstraints)
             {
                 if (constraint.Columns.Count == 0)
+                {
+                    continue;
+                }
+
+                var exists = await ConstraintExistsAsync(connection,
+                                                        transaction,
+                                                        table.SchemaName,
+                                                        table.TableName,
+                                                        constraint.Name,
+                                                        cancellationToken);
+
+                if (exists)
                 {
                     continue;
                 }
@@ -286,6 +385,18 @@ public sealed class PostgreSqlSchemaWriter : ISchemaWriter
                     continue;
                 }
 
+                var exists = await ConstraintExistsAsync(connection,
+                                                           transaction,
+                                                           table.SchemaName,
+                                                           table.TableName,
+                                                           constraint.Name,
+                                                           cancellationToken);
+
+                if (exists)
+                {
+                    continue;
+                }
+
                 var sql = $"""
                 ALTER TABLE
                     {QuoteIdentifier(table.SchemaName)}.
@@ -323,6 +434,19 @@ public sealed class PostgreSqlSchemaWriter : ISchemaWriter
                 {
                     continue;
                 }
+
+                var exists = await IndexExistsAsync(
+                            connection,
+                            transaction,
+                            table.SchemaName,
+                            index.Name,
+                            cancellationToken);
+
+                if (exists)
+                {
+                    continue;
+                }
+
 
                 var columns = string.Join(
                     ", ",
@@ -385,6 +509,20 @@ public sealed class PostgreSqlSchemaWriter : ISchemaWriter
             {
                 if (foreignKey.Columns.Count == 0 ||
                     foreignKey.ReferencedColumns.Count == 0)
+                {
+                    continue;
+                }
+
+                var exists =
+    await ConstraintExistsAsync(
+        connection,
+        transaction,
+        table.SchemaName,
+        table.TableName,
+        foreignKey.Name,
+        cancellationToken);
+
+                if (exists)
                 {
                     continue;
                 }

@@ -93,7 +93,7 @@ public sealed class MigrationService : IMigrationService
         return schema;
     }
 
-    public async Task GenerateSchemaAsync(string outputDirectory, CancellationToken cancellationToken = default)
+    public async Task<int> GenerateSchemaAsync(string outputDirectory, CancellationToken cancellationToken = default)
     {
         var tables = await InspectAsync(cancellationToken);
         Directory.CreateDirectory(outputDirectory);
@@ -102,17 +102,16 @@ public sealed class MigrationService : IMigrationService
         foreach (var table in tables)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
             var script = _schemaGenerator.GenerateCreateTableScript(table);
             var fileName = $"{table.SchemaName}_{table.TableName}.sql";
             var path = Path.Combine(outputDirectory, fileName);
 
             await File.WriteAllTextAsync(path, script, cancellationToken);
 
-            _logger.LogInformation("Generated schema script: {File}", path);
             schemaFileCount++;
         }
-
-        _logger.LogInformation("Total schema file generated : {SchemaFileCount}", schemaFileCount);
+        return schemaFileCount;
     }
 
     public async Task CreatePostgreSqlSchemaAsync(CancellationToken cancellationToken = default)

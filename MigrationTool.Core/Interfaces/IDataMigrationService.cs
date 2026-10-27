@@ -16,4 +16,10 @@ public interface IDataMigrationService
         IReadOnlyList<TableDefinition> tables,
         IProgress<MigrationProgress>? progress = null,
         CancellationToken cancellationToken = default);
+
+    Task<MigrationReport> ResumeMigrationAsync(
+    string migrationId,
+    IReadOnlyList<TableDefinition> tables,
+    IProgress<MigrationProgress>? progress = null,
+    CancellationToken cancellationToken = default);
 }

@@ -24,7 +24,6 @@ if (string.IsNullOrWhiteSpace(options.Source.ConnectionString))
 }
 
 var services = new ServiceCollection();
-
 services.AddLogging(builder =>
 {
     builder.AddSimpleConsole(options =>
@@ -46,31 +45,23 @@ services.AddSingleton<IMigrationService, MigrationService>();
 services.AddSingleton<IDataReader>(_ => new SqlServerDataReader(options.Source.ConnectionString));
 services.AddSingleton<IDataWriter>(serviceProvider =>
 {
-    var converter =
-        serviceProvider.GetRequiredService<IDataValueConverter>();
-
-    return new PostgreSqlDataWriter(
-        options.Target.ConnectionString,
-        converter);
+    var converter = serviceProvider.GetRequiredService<IDataValueConverter>();
+    return new PostgreSqlDataWriter(options.Target.ConnectionString, converter);
 });
 services.AddSingleton<IMigrationLogger, MigrationLogger>();
+services.AddSingleton<IMigrationStateStore>(_ => new JsonMigrationStateStore(Path.Combine(AppContext.BaseDirectory, "migration-history")));
 services.AddSingleton<IDataMigrationService, DataMigrationService>();
 services.AddSingleton<IDataValueConverter, SqlServerValueConverter>();
 services.AddSingleton<IIdentitySynchronizer>(
     serviceProvider =>
     {
-        var logger =
-            serviceProvider
-                .GetRequiredService<
-                    ILogger<PostgreSqlIdentitySynchronizer>>();
-
-        return new PostgreSqlIdentitySynchronizer(
-            options.Target.ConnectionString,
-            logger);
+        var logger = serviceProvider.GetRequiredService<ILogger<PostgreSqlIdentitySynchronizer>>();
+        return new PostgreSqlIdentitySynchronizer(options.Target.ConnectionString, logger);
     });
 services.AddSingleton<ITableDependencySorter, TableDependencySorter>();
 services.AddSingleton<ITargetDataReader>(_ => new PostgreSqlDataReader(options.Target.ConnectionString));
 services.AddSingleton<IDataValidator, DataValidator>();
+services.AddSingleton<MigrationResumePlanner>();
 
 using var serviceProvider = services.BuildServiceProvider();
 var migrationService = serviceProvider.GetRequiredService<IMigrationService>();
@@ -260,6 +251,7 @@ static async Task MigrateDataAsync(string[] args, IMigrationService migrationSer
     {
         Console.WriteLine("Usage: migrate-data --table <schema.table>");
         Console.WriteLine("   or: migrate-data --all");
+        Console.WriteLine("   or: migrate-data --resume <migration-id>");
         return;
     }
 
@@ -281,6 +273,20 @@ static async Task MigrateDataAsync(string[] args, IMigrationService migrationSer
     if (option == "--all")
     {
         await MigrateAllTablesAsync(migrationService, dataMigrationService, cancellationToken);
+        return;
+    }
+    if (option == "--resume")
+    {
+        if (args.Length < 3 || string.IsNullOrWhiteSpace(args[2]))
+        {
+            Console.WriteLine("Please specify a migration ID.");
+            Console.WriteLine();
+            Console.WriteLine("Example:");
+            Console.WriteLine("  migrate-data --resume migration-20261026-160802-3d11f317b49142cabbf1432c85aa06dd");
+            return;
+        }
+
+        await ResumeMigrationCommandAsync(args[2], migrationService, dataMigrationService, cancellationToken);
         return;
     }
 
@@ -315,7 +321,6 @@ static async Task MigrateAllTablesAsync(IMigrationService migrationService, IDat
 
     Console.WriteLine();
     Console.WriteLine("Starting data migration...");
-
     Console.WriteLine(new string('-', 40));
 
     var progress = new Progress<MigrationProgress>(p =>
@@ -334,33 +339,74 @@ static async Task MigrateAllTablesAsync(IMigrationService migrationService, IDat
     Console.WriteLine(MigrationReportFormatter.Format(report));
 }
 
+static async Task ResumeMigrationCommandAsync(string migrationId, IMigrationService migrationService, IDataMigrationService dataMigrationService, CancellationToken cancellationToken)
+{
+    var tables = await migrationService.InspectAsync(cancellationToken);
+
+    if (tables.Count == 0)
+    {
+        Console.WriteLine("No tables found.");
+        return;
+    }
+
+    var orderedTables = dataMigrationService.GetMigrationOrder(tables);
+
+    Console.WriteLine();
+    Console.WriteLine("Resume migration");
+    Console.WriteLine("================");
+    Console.WriteLine($"Migration ID: {migrationId}");
+    Console.WriteLine();
+
+    Console.WriteLine("Migration plan");
+    Console.WriteLine("==============");
+
+    for (var i = 0; i < orderedTables.Count; i++)
+    {
+        Console.WriteLine($"{i + 1,2}. {orderedTables[i].FullName}");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"Total tables: {orderedTables.Count}");
+    Console.WriteLine();
+    Console.WriteLine("Resuming data migration...");
+    Console.WriteLine(new string('-', 40));
+
+    var progress = new Progress<MigrationProgress>(p =>
+    {
+        if (p.Percentage.HasValue)
+        {
+            Console.WriteLine($"{p.TableName}: {p.RowsMigrated:N0} / " +
+                              $"{p.TotalRows:N0} " +
+                              $"({p.Percentage.Value:F1}%)");
+        }
+        else
+        {
+            Console.WriteLine($"{p.TableName}: {p.RowsMigrated:N0}");
+        }
+    });
+
+    var report = await dataMigrationService.ResumeMigrationAsync(migrationId, tables, progress, cancellationToken);
+    Console.WriteLine(MigrationReportFormatter.Format(report));
+}
+
 static async Task ValidateAsync(string[] args, IMigrationService migrationService, IDataValidator dataValidator, CancellationToken cancellationToken)
 {
     if (args.Length < 2)
     {
-        Console.WriteLine(
-            "Usage: validate --row-count");
-
-        Console.WriteLine(
-            "       validate --schema");
-
+        Console.WriteLine("Usage: validate --row-count");
+        Console.WriteLine("       validate --schema");
         return;
     }
 
-    var tables =
-        await migrationService.InspectAsync();
+    var tables = await migrationService.InspectAsync();
 
     if (tables.Count == 0)
     {
-        Console.WriteLine(
-            "No tables found.");
-
+        Console.WriteLine("No tables found.");
         return;
     }
 
-    var validationType =
-        args[1].ToLowerInvariant();
-
+    var validationType = args[1].ToLowerInvariant();
     ValidationReport report;
 
     switch (validationType)
@@ -368,50 +414,27 @@ static async Task ValidateAsync(string[] args, IMigrationService migrationServic
         case "--row-count":
 
             Console.WriteLine();
-            Console.WriteLine(
-                "Row count validation");
-
-            Console.WriteLine(
-                "====================");
-
-            report =
-                await dataValidator.ValidateRowCountsAsync(
-                    tables,
-                    cancellationToken);
+            Console.WriteLine("Row count validation");
+            Console.WriteLine("====================");
+            report = await dataValidator.ValidateRowCountsAsync(tables, cancellationToken);
 
             PrintValidationReport(report);
-
             break;
 
         case "--schema":
 
             Console.WriteLine();
-            Console.WriteLine(
-                "Schema validation");
-
-            Console.WriteLine(
-                "=================");
-
-            report =
-                await dataValidator.ValidateSchemaAsync(
-                    tables,
-                    cancellationToken);
+            Console.WriteLine("Schema validation");
+            Console.WriteLine("=================");
+            report = await dataValidator.ValidateSchemaAsync(tables, cancellationToken);
 
             PrintValidationReport(report);
-
             break;
 
         default:
-
-            Console.WriteLine(
-                "Unknown validation option.");
-
-            Console.WriteLine(
-                "Usage: validate --row-count");
-
-            Console.WriteLine(
-                "       validate --schema");
-
+            Console.WriteLine("Unknown validation option.");
+            Console.WriteLine("Usage: validate --row-count");
+            Console.WriteLine("       validate --schema");
             break;
     }
 }
